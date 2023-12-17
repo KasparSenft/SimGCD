@@ -15,4 +15,4 @@ osr_split_dir = 'data/ssb_splits'
 # -----------------
 # OTHER PATHS
 # -----------------
-exp_root = 'dev_outputs_mp' # All logs and checkpoints will be saved here
+exp_root = 'dev_outputs_q_indirect_0.5' # All logs and checkpoints will be saved here

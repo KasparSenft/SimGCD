@@ -15,6 +15,7 @@ from util.general_utils import AverageMeter, init_experiment
 from util.cluster_and_log_utils import log_accs_from_preds
 from config import exp_root
 from model import DINOHead, info_nce_logits, SupConLoss, DistillLoss, ContrastiveLearningViewGenerator, get_params_groups
+from memory_bank import NNMemoryBankModule
 
 
 def train(student, train_loader, test_loader, unlabelled_train_loader, args):
@@ -46,6 +47,16 @@ def train(student, train_loader, test_loader, unlabelled_train_loader, args):
     # best_train_acc_ubl = 0 
     # best_train_acc_all = 0
 
+
+    """
+    Initialise the Memory Queue
+    """
+    if args.mem_queue:
+        memory_bank = NNMemoryBankModule(size=args.mem_q_size)
+
+
+
+
     for epoch in range(args.epochs):
         loss_record = AverageMeter()
 
@@ -71,6 +82,32 @@ def train(student, train_loader, test_loader, unlabelled_train_loader, args):
                 # avg_probs = (student_out / 0.1).softmax(dim=1).mean(dim=0)
                 # me_max_loss = - torch.sum(torch.log(avg_probs**(-avg_probs))) + math.log(float(len(avg_probs)))
                 # cluster_loss += args.memax_weight * me_max_loss
+
+
+                """
+                HERE we add the memory queue 
+
+                """
+                if args.mem_queue:
+
+                    if args.mem_direct_knn:
+                        new_feats = memory_bank(student_proj[:args.batch_size], update = True) #use first view
+                    else:
+                        new_feats = memory_bank(student_proj[args.batch_size:], update = True) #use second view
+
+                    
+                p = (torch.rand(args.batch_size) < args.mem_p).float()
+                q = (1 - p).nonzero().squeeze()
+                p = p.nonzero().squeeze()
+
+                student_proj[args.batch_size:][p] = 0
+                new_feats[q] = 0
+
+                student_proj[args.batch_size:] = student_proj[args.batch_size:] + new_feats
+
+
+
+                
 
                 # represent learning, unsup
                 contrastive_logits, contrastive_labels = info_nce_logits(features=student_proj)
@@ -207,6 +244,13 @@ if __name__ == "__main__":
     parser.add_argument('--print_freq', default=10, type=int)
     parser.add_argument('--exp_name', default=None, type=str)
 
+    """
+    Size of Memory Queue
+    """
+    parser.add_argument('--mem_queue', type=bool, default=False, help='whether to use the memory queue')
+    parser.add_argument('--mem_q_size', type=int, default= 32768, help='How many images to store in the queue size')
+    parser.add_argument('--mem_p', type=float, default = 0., help='Probability of selecting the memory queue element instead of the other view')
+    parser.add_argument('--mem_direct_knn', type=bool, default = False, help='If true, the KNN queue will be the first view, if false the second')
     # ----------------------
     # INIT
     # ----------------------

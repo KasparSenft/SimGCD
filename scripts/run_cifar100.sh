@@ -3,12 +3,12 @@
 set -e
 set -x
 
-#export CUDA_VISIBLE_DEVICES=2,3,4,5,6 
+export CUDA_VISIBLE_DEVICES=1
 
-torchrun train_mp.py \
+python train.py \
     --dataset_name 'cifar100' \
-    --batch_size 256 \
-    --grad_from_block 11 \
+    --batch_size 128 \
+    --grad_from_block 10 \
     --epochs 200 \
    --num_workers 8 \
     --use_ssb_splits \
@@ -21,4 +21,5 @@ torchrun train_mp.py \
     --teacher_temp 0.04 \
     --warmup_teacher_temp_epochs 30 \
     --memax_weight 4 \
-    --exp_name cifar100_simgcd
+    --exp_name cifar100_simgcd \
+    --exp_root 'experiments/dev_outputs_block_10'

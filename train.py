@@ -55,7 +55,11 @@ def train(student, train_loader, test_loader, unlabelled_train_loader, args):
         memory_bank = NNMemoryBankModule(size=args.mem_q_size)
 
 
-
+    """
+    Use precomputed KNN
+    """
+    if args.static_knn:
+        knn = torch.load(f'{args.knn_root}/{args.dataset_name}/dino_vitb16/knn.pt'}
 
     for epoch in range(args.epochs):
         loss_record = AverageMeter()
@@ -65,8 +69,14 @@ def train(student, train_loader, test_loader, unlabelled_train_loader, args):
             images, class_labels, uq_idxs, mask_lab = batch
             mask_lab = mask_lab[:, 0]
 
+
             class_labels, mask_lab = class_labels.cuda(non_blocking=True), mask_lab.cuda(non_blocking=True).bool()
             images = torch.cat(images, dim=0).cuda(non_blocking=True)
+
+            """Use static KNN if desired"""
+            if args.static_knn:
+                knn_choices = torch.randint(50, size = (args.batch_size,))
+                knn_idxs = knn[uq_idxs,knn_choices]
 
             with torch.cuda.amp.autocast(fp16_scaler is not None):
                 student_proj, student_out = student(images)
@@ -85,7 +95,7 @@ def train(student, train_loader, test_loader, unlabelled_train_loader, args):
 
 
                 """
-                HERE we add the memory queue 
+                Use Memory Queue if desired 
 
                 """
                 if args.mem_queue:
@@ -96,15 +106,14 @@ def train(student, train_loader, test_loader, unlabelled_train_loader, args):
                         new_feats = memory_bank(student_proj[args.batch_size:], update = True) #use second view
 
                     
-                p = (torch.rand(args.batch_size) < args.mem_p).float()
-                q = (1 - p).nonzero().squeeze()
-                p = p.nonzero().squeeze()
+                    p = (torch.rand(args.batch_size) < args.mem_p).float()
+                    q = (1 - p).nonzero().squeeze()
+                    p = p.nonzero().squeeze()
 
-                student_proj[args.batch_size:][p] = 0
-                new_feats[q] = 0
+                    student_proj[args.batch_size:][p] = 0
+                    new_feats[q] = 0
 
-                student_proj[args.batch_size:] = student_proj[args.batch_size:] + new_feats
-
+                    student_proj[args.batch_size:] = student_proj[args.batch_size:] + new_feats
 
 
                 

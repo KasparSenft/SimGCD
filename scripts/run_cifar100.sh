@@ -3,12 +3,12 @@
 set -e
 set -x
 
-export CUDA_VISIBLE_DEVICES=4
+export CUDA_VISIBLE_DEVICES=1
 
 python train.py \
     --dataset_name 'cifar100' \
-    --batch_size 128 \
-    --grad_from_block 11 \
+   --batch_size 128 \
+    --grad_from_block 10 \
     --epochs 200 \
    --num_workers 8 \
     --use_ssb_splits \
@@ -22,6 +22,5 @@ python train.py \
     --warmup_teacher_temp_epochs 30 \
     --memax_weight 4 \
     --exp_name cifar100_simgcd \
-    --exp_root 'experiments/dev_outputs_indirect_0.5' \
-    --mem_queue True \
-    --mem_p 0.5 \
+    --exp_root 'experiments/dev_outputs_block10' \
+ 

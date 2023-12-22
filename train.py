@@ -59,7 +59,7 @@ def train(student, train_loader, test_loader, unlabelled_train_loader, args):
     Use precomputed KNN
     """
     if args.static_knn:
-        knn = torch.load(f'{args.knn_root}/{args.dataset_name}/dino_vitb16/knn.pt'}
+        knn = torch.load(f'{args.knn_root}/{args.dataset_name}/dino_vitb16/knn.pt')
 
     for epoch in range(args.epochs):
         loss_record = AverageMeter()
@@ -260,6 +260,12 @@ if __name__ == "__main__":
     parser.add_argument('--mem_q_size', type=int, default= 32768, help='How many images to store in the queue size')
     parser.add_argument('--mem_p', type=float, default = 0., help='Probability of selecting the memory queue element instead of the other view')
     parser.add_argument('--mem_direct_knn', type=bool, default = False, help='If true, the KNN queue will be the first view, if false the second')
+
+    """
+    Static KNN
+    """
+    parser.add_argument('--static_knn', type=bool, default=False)
+
     # ----------------------
     # INIT
     # ----------------------

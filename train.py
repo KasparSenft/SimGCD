@@ -80,18 +80,20 @@ def train(student, train_loader, test_loader, unlabelled_train_loader, args):
 
             with torch.cuda.amp.autocast(fp16_scaler is not None):
                 student_proj, student_out = student(images)
-                # teacher_out = student_out.detach()
 
-                # clustering, sup
-                # sup_logits = torch.cat([f[mask_lab] for f in (student_out / 0.1).chunk(2)], dim=0)
-                # sup_labels = torch.cat([class_labels[mask_lab] for _ in range(2)], dim=0)
-                # cls_loss = nn.CrossEntropyLoss()(sup_logits, sup_labels)
 
-                # clustering, unsup
-                # cluster_loss = cluster_criterion(student_out, teacher_out, epoch)
-                # avg_probs = (student_out / 0.1).softmax(dim=1).mean(dim=0)
-                # me_max_loss = - torch.sum(torch.log(avg_probs**(-avg_probs))) + math.log(float(len(avg_probs)))
-                # cluster_loss += args.memax_weight * me_max_loss
+                teacher_out = student_out.detach()
+
+                #clustering, sup
+                sup_logits = torch.cat([f[mask_lab] for f in (student_out / 0.1).chunk(2)], dim=0)
+                sup_labels = torch.cat([class_labels[mask_lab] for _ in range(2)], dim=0)
+                cls_loss = nn.CrossEntropyLoss()(sup_logits, sup_labels)
+
+                #clustering, unsup
+                cluster_loss = cluster_criterion(student_out, teacher_out, epoch)
+                avg_probs = (student_out / 0.1).softmax(dim=1).mean(dim=0)
+                me_max_loss = - torch.sum(torch.log(avg_probs**(-avg_probs))) + math.log(float(len(avg_probs)))
+                cluster_loss += args.memax_weight * me_max_loss
 
 
                 """
@@ -129,13 +131,13 @@ def train(student, train_loader, test_loader, unlabelled_train_loader, args):
                 sup_con_loss = SupConLoss()(student_proj, labels=sup_con_labels)
 
                 pstr = ''
-                # pstr += f'cls_loss: {cls_loss.item():.4f} '
-                # pstr += f'cluster_loss: {cluster_loss.item():.4f} '
+                pstr += f'cls_loss: {cls_loss.item():.4f} '
+                pstr += f'cluster_loss: {cluster_loss.item():.4f} '
                 pstr += f'sup_con_loss: {sup_con_loss.item():.4f} '
                 pstr += f'contrastive_loss: {contrastive_loss.item():.4f} '
 
                 loss = 0
-                # loss += (1 - args.sup_weight) * cluster_loss + args.sup_weight * cls_loss
+                loss += (1 - args.sup_weight) * cluster_loss + args.sup_weight * cls_loss
                 loss += (1 - args.sup_weight) * contrastive_loss + args.sup_weight * sup_con_loss
                 
             # Train acc
@@ -158,13 +160,13 @@ def train(student, train_loader, test_loader, unlabelled_train_loader, args):
 
         #Testing unnecessary for just representation learning
 
-        # args.logger.info('Testing on unlabelled examples in the training data...')
-        # all_acc, old_acc, new_acc = test(student, unlabelled_train_loader, epoch=epoch, save_name='Train ACC Unlabelled', args=args)
-        # # args.logger.info('Testing on disjoint test set...')
-        # # all_acc_test, old_acc_test, new_acc_test = test(student, test_loader, epoch=epoch, save_name='Test ACC', args=args)
+        args.logger.info('Testing on unlabelled examples in the training data...')
+        all_acc, old_acc, new_acc = test(student, unlabelled_train_loader, epoch=epoch, save_name='Train ACC Unlabelled', args=args)
+        # args.logger.info('Testing on disjoint test set...')
+        # all_acc_test, old_acc_test, new_acc_test = test(student, test_loader, epoch=epoch, save_name='Test ACC', args=args)
 
 
-        # args.logger.info('Train Accuracies: All {:.4f} | Old {:.4f} | New {:.4f}'.format(all_acc, old_acc, new_acc))
+        args.logger.info('Train Accuracies: All {:.4f} | Old {:.4f} | New {:.4f}'.format(all_acc, old_acc, new_acc))
         # args.logger.info('Test Accuracies: All {:.4f} | Old {:.4f} | New {:.4f}'.format(all_acc_test, old_acc_test, new_acc_test))
 
         # Step schedule
@@ -180,20 +182,20 @@ def train(student, train_loader, test_loader, unlabelled_train_loader, args):
         args.logger.info("model saved to {}.".format(args.model_path))
 
         # if old_acc_test > best_test_acc_lab:
-        #     
+            
         #     args.logger.info(f'Best ACC on old Classes on disjoint test set: {old_acc_test:.4f}...')
         #     args.logger.info('Best Train Accuracies: All {:.4f} | Old {:.4f} | New {:.4f}'.format(all_acc, old_acc, new_acc))
-        #     
+            
         #     torch.save(save_dict, args.model_path[:-3] + f'_best.pt')
         #     args.logger.info("model saved to {}.".format(args.model_path[:-3] + f'_best.pt'))
-        #     
+            
         #     # inductive
         #     best_test_acc_lab = old_acc_test
         #     # transductive            
         #     best_train_acc_lab = old_acc
         #     best_train_acc_ubl = new_acc
         #     best_train_acc_all = all_acc
-        # 
+        
         # args.logger.info(f'Exp Name: {args.exp_name}')
         # args.logger.info(f'Metrics with best model on test set: All: {best_train_acc_all:.4f} Old: {best_train_acc_lab:.4f} New: {best_train_acc_ubl:.4f}')
 

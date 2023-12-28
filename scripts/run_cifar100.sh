@@ -3,7 +3,7 @@
 set -e
 set -x
 
-export CUDA_VISIBLE_DEVICES=0
+export CUDA_VISIBLE_DEVICES=1
 
 python train.py \
     --dataset_name 'cifar100' \
@@ -22,5 +22,5 @@ python train.py \
     --warmup_teacher_temp_epochs 30 \
     --memax_weight 4 \
     --exp_name cifar100_simgcd \
-    --exp_root 'experiments/dev_outputs_original' \
+    --exp_root 'experiments/test' \
  
